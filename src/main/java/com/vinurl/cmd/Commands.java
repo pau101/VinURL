@@ -4,6 +4,7 @@ import com.mojang.brigadier.context.CommandContext;
 import com.vinurl.client.SoundManager;
 import com.vinurl.client.VinURLClient;
 import com.vinurl.exe.Executable;
+import com.vinurl.exe.UpdateResult;
 import io.wispforest.owo.config.ui.ConfigScreen;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -44,14 +45,24 @@ public class Commands {
 	private static int updateExecutables(CommandContext<FabricClientCommandSource> ctx) {
 		ctx.getSource().sendFeedback(Component.translatable("command.vinurl.update.check"));
 		CompletableFuture.runAsync(() -> {
+			boolean anyFailed = false;
 			for (Executable exe : Executable.values()) {
 				String current = exe.currentVersion();
-				if (exe.checkForUpdates()) {
-					String latest = exe.currentVersion();
-					ctx.getSource().sendFeedback(Component.literal("%s: %s -> %s".formatted( exe, current, latest)));
+				UpdateResult result = exe.checkForUpdates();
+				switch (result) {
+					case UPDATED -> ctx.getSource().sendFeedback(
+						Component.literal("%s: %s -> %s".formatted(exe, current, exe.currentVersion())));
+					case FAILED -> {
+						ctx.getSource().sendFeedback(
+							Component.translatable("command.vinurl.update.failed", exe));
+						anyFailed = true;
+					}
+					case UP_TO_DATE, SKIPPED_NO_GPG -> {}
 				}
 			}
-			ctx.getSource().sendFeedback(Component.translatable("command.vinurl.update.latest"));
+			if (!anyFailed) {
+				ctx.getSource().sendFeedback(Component.translatable("command.vinurl.update.latest"));
+			}
 		});
 		return 1;
 	}

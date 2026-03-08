@@ -88,12 +88,12 @@ public enum Executable {
 		}
 	}
 
-	public boolean checkForExecutable() {
-		return installer.checkAndInstall();
+	public void checkForExecutable() {
+		installer.checkAndInstall();
 	}
 
-	public boolean checkForUpdates() {
-		return installer.checkForUpdates();
+	public UpdateResult checkForUpdates() {
+		return installer.checkForUpdates(false);
 	}
 
 	public String currentVersion() {

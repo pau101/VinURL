@@ -26,13 +26,11 @@ public class VinURLClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
-		CompletableFuture.runAsync((() -> {
+		CompletableFuture.runAsync(() -> {
 			for (Executable exe : Executable.values()) {
-				if (!exe.checkForExecutable()) {
-					LOGGER.error("Failed to load executable {}", exe);
-				}
+				exe.checkForExecutable();
 			}
-		}));
+		});
 
 		KeyListener.register();
 		Commands.register();

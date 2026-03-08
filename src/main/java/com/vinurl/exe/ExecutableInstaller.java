@@ -77,47 +77,44 @@ class ExecutableInstaller {
 		}
 	}
 
-	boolean checkAndInstall() {
-        if (directory.toFile().exists() || directory.toFile().mkdirs()) {
-            if (!filePath.toFile().exists()) {
-                LOGGER.info("Executable {} not found, fetching latest release", fileName);
-                ReleaseInfo release = GitHub.fetchLatestRelease(repositoryName, repositoryFile);
-                if (release.isEmpty()) {
-                    LOGGER.warn("Could not fetch release info for {}", repositoryName);
-                    return false;
-                }
-                return install(release, false);
-            }
-            if (CONFIG.updatesOnStartup()) {
-                checkForUpdates();
-            }
-            return true;
-        }
-		return false;
-    }
+	void checkAndInstall() {
+		if (directory.toFile().exists() || directory.toFile().mkdirs()) {
+			if (!filePath.toFile().exists()) {
+				LOGGER.info("Executable {} not found, fetching latest release", fileName);
+				ReleaseInfo release = GitHub.fetchLatestRelease(repositoryName, repositoryFile);
+				if (release.isEmpty()) {
+					LOGGER.warn("Could not fetch release info for {}", repositoryName);
+				} else {
+					install(release);
+				}
+			} else if (CONFIG.updatesOnStartup()) {
+				checkForUpdates(true);
+			}
+		}
+	}
 
-	boolean checkForUpdates() {
-		if (!canVerifyGPG()) {
-			LOGGER.debug("Skipping update check for {} because GPG verification is unavailable", fileName);
-			return false;
+	UpdateResult checkForUpdates(boolean requireGPG) {
+		if (requireGPG && !canVerifyGPG()) {
+			LOGGER.info("Auto-update skipped for {} (bouncycastle not available)", fileName);
+			return UpdateResult.SKIPPED_NO_GPG;
 		}
 		ReleaseInfo release = GitHub.fetchLatestRelease(repositoryName, repositoryFile);
 		String currentVersion = versionFile.read();
 		if (release.isEmpty() || release.version().equals(currentVersion)) {
-			return false;
+			return UpdateResult.UP_TO_DATE;
 		}
 		LOGGER.info("Update available for {}: {} -> {}", fileName, currentVersion, release.version());
-		return install(release, true);
+		return install(release) ? UpdateResult.UPDATED : UpdateResult.FAILED;
 	}
 
 	private boolean canVerifyGPG() {
 		return GPGVerifier.isAvailable() || verificationMethod == VerificationMethod.GITHUB_DIGEST;
 	}
 
-	private boolean install(ReleaseInfo release, boolean requireGPG) {
+	private boolean install(ReleaseInfo release) {
 		Path tempFile = null;
 		try {
-			String expectedHash = getExpectedHash(release, requireGPG);
+			String expectedHash = getExpectedHash(release);
 			if (expectedHash == null) {
 				return false;
 			}
@@ -156,13 +153,9 @@ class ExecutableInstaller {
 		}
 	}
 
-	private String getExpectedHash(ReleaseInfo release, boolean requireGPG) {
+	private String getExpectedHash(ReleaseInfo release) {
 		if (!GPGVerifier.isAvailable() && verificationMethod != VerificationMethod.GITHUB_DIGEST) {
-			if (requireGPG) {
-				LOGGER.error("Cannot update {} because GPG verification is unavailable", fileName);
-				return null;
-			}
-			LOGGER.warn("GPG verification unavailable, using GitHub digest for initial download of {}", fileName);
+			LOGGER.warn("Installing {} using GitHub digest (bouncycastle not available)", fileName);
 			return release.digest();
 		}
 

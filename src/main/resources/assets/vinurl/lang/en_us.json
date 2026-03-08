@@ -27,6 +27,7 @@
   "command.vinurl.delete.exception": "Deleted only non active audio files",
   "command.vinurl.update.check": "Checking for updates...",
   "command.vinurl.update.latest": "Everything is up to date!",
+  "command.vinurl.update.failed": "%s: update failed",
   "gui.vinurl.button.duration.tooltip" : "Automatic Duration",
   "gui.vinurl.button.duration.tooltip.calculating" : "Calculating..."
 }
